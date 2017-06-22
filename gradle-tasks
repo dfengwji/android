@@ -1,0 +1,56 @@
+tasks.whenTaskAdded {
+    task ->
+    if(task.name.contains("assembleDebug")){
+        task.doLast {
+            println("assembleDebug do last!!!!")
+            def fileName = "IVRIdle-debug.apk"
+			def fromFile = './build/outputs/apk/' + fileName
+            def intoFile = "../"
+			println("move file from" + fromFile + " to "+intoFile)
+            copy {
+                from fromFile
+                into intoFile
+            }
+
+            tasks.runCommand.execute()
+        }
+    }
+}
+
+task runCommand(){
+    doFirst{
+        println("run command dofirst!!!")
+    }
+    doLast {
+        exec {
+            workingDir = '../';
+            println ("call bat file!!!!"+workingDir)
+            commandLine = ['cmd', '/c', 'signAndInstall.bat']
+        }
+    }
+}
+
+task makeJar(type:Jar){
+    def SDK_BASENAME = "IVRIdleSDK"
+	def SDK_VERSION = "_V1.0"
+	def sdkDestinationPath = "build/"
+	def zipFile = file('build/intermediates/bundles/debug/classes.jar')
+    from zipTree(zipFile)
+    destinationDir = file(sdkDestinationPath)
+    doLast{
+        copy {
+            def baseName = SDK_BASENAME+SDK_VERSION+".jar"
+			delete sdkDestinationPath + baseName
+            from 'build/idlesdk.jar'
+			into 'build/libs/'
+			rename('idlesdk.jar',baseName)
+            println("make jar complete!!!")
+        }
+    }
+}
+
+build.doLast {
+    println("build complete!!!")
+    tasks.makeJar.execute()
+}
+
