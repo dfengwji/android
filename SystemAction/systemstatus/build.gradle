@@ -1,0 +1,52 @@
+apply plugin: 'com.android.library'
+
+android {
+    compileSdkVersion 24
+    buildToolsVersion "27.0.3"
+
+    defaultConfig {
+        minSdkVersion 23
+        targetSdkVersion 24
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+dependencies {
+    implementation files('libs/controller.jar')
+    implementation files('libs/systemaction.jar')
+    implementation files('libs/unity-classes.jar')
+}
+
+task makeJar(type:Jar){
+    def SDK_BASENAME = "SystemStatus"
+    def SDK_VERSION = "_V1.1"
+    def sdkDestinationPath = "build/"
+    def zipFile = file('build/intermediates/bundles/debug/classes.jar')
+    from zipTree(zipFile)
+    destinationDir = file(sdkDestinationPath)
+    doLast{
+        copy {
+            def baseName = SDK_BASENAME+SDK_VERSION+".jar"
+            delete sdkDestinationPath + baseName
+            from 'build/SystemStatus.jar'
+            into 'build/libs/'
+            rename('SystemStatus.jar',baseName)
+            println("make jar complete!!!")
+        }
+    }
+}
+
+assemble.doLast {
+    println("assemble complete!!!")
+    tasks.makeJar.execute()
+}

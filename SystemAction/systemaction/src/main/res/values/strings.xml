@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">SystemAction</string>
+    <string name="wifi_error_psw">wifi密码错误</string>
+    <string name="wifi_error_ssid">找不到网络</string>
+</resources>

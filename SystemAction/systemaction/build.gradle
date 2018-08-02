@@ -1,0 +1,56 @@
+apply plugin: 'com.android.library'
+
+android {
+    compileSdkVersion 24
+    buildToolsVersion '27.0.3'
+    defaultConfig {
+        minSdkVersion 24
+        targetSdkVersion 24
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+    productFlavors {
+    }
+    gradle.projectsEvaluated {
+        tasks.withType(JavaCompile) {
+            options.compilerArgs.add('-Xbootclasspath/p:systemlibs/*.jar')
+        }
+        println("this is projectsEvaluated!!!")
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+}
+
+task makeJar(type:Jar){
+    def SDK_BASENAME = "SystemAction"
+    def SDK_VERSION = "_V1.1"
+    def sdkDestinationPath = "build/"
+    def zipFile = file('build/intermediates/bundles/debug/classes.jar')
+    from zipTree(zipFile)
+    destinationDir = file(sdkDestinationPath)
+    doLast{
+        copy {
+            def baseName = SDK_BASENAME+SDK_VERSION+".jar"
+            delete sdkDestinationPath + baseName
+            from 'build/SystemAction.jar'
+            into 'build/libs/'
+            rename('SystemAction.jar',baseName)
+            println("make jar complete!!!")
+        }
+    }
+}
+
+assemble.doLast {
+    println("assemble complete!!!")
+    tasks.makeJar.execute()
+}
+
