@@ -1,14 +1,23 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
 
-    package="com.zps.idle">
+    package="com.zstart.zps">
 
     <application
         android:allowBackup="true"
         android:label="@string/app_name"
         android:supportsRtl="true">
-
+        <receiver android:name="com.zstart.zps.SystemReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.bluetooth.adapter.action.STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
     </application>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE"/>
+
 </manifest>

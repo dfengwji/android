@@ -3,10 +3,10 @@ package com.zstart.action.util;
 import android.content.Context;
 
 import com.unity3d.player.UnityPlayer;
-import com.zps.idle.R;
 import com.zstart.action.constant.ActionState;
 import com.zstart.action.constant.ActionType;
 import com.zstart.action.constant.ExceptionState;
+import com.zstart.zps.R;
 
 public class UnityUtil {
 

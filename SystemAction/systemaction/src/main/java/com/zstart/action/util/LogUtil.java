@@ -3,7 +3,7 @@ package com.zstart.action.util;
 import android.util.Log;
 
 public final class LogUtil {
-	private static final String TAG = "ZApp";
+	private static final String TAG = "IVRApp";
 	public static boolean isDebug = true;
 
 	public static void i(String msg) {

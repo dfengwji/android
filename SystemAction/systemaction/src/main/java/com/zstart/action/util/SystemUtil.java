@@ -237,7 +237,7 @@ public final class SystemUtil {
         {
             Class<?> classType = Class.forName("android.os.SystemProperties");
             Method method = classType.getDeclaredMethod("get",String.class);
-            return (String) method.invoke(classType,"ro.serialno");
+            return (String) method.invoke(classType,"ro.boot.serialno");
         }catch (Exception e) {
             LogUtil.e(e.toString());
             return "";
@@ -286,12 +286,17 @@ public final class SystemUtil {
     public static String getMacAddress(Context context) {
         WifiManager wifiMg = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
         WifiInfo info = wifiMg.getConnectionInfo();
+        if(info == null){
+            return "";
+        }
         return info.getMacAddress();
     }
 
     public static String getIPAddress(Context context){
         WifiManager wifiMg = (WifiManager)context.getSystemService(Context.WIFI_SERVICE);
         WifiInfo info = wifiMg.getConnectionInfo();
+        if(info == null)
+            return "";
         return intToIP(info.getIpAddress());
     }
 

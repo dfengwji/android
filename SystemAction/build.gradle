@@ -25,7 +25,6 @@ apply plugin: 'com.android.application'
 
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
-    implementation files('downloadprovider/downloadprovider.jar')
 }
 
 android {

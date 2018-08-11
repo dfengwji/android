@@ -51,6 +51,6 @@ task makeJar(type:Jar){
 
 assemble.doLast {
     println("assemble complete!!!")
-    tasks.makeJar.execute()
+    //tasks.makeJar.execute()
 }
 

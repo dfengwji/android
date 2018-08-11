@@ -44,6 +44,7 @@ public class AppActionProxy {
 	private AppWifiProxy wifiProxy;
 	public AppActionProxy(){
         callBack = new ActionCallBack();
+        LogUtil.d("Init AppActionProxy....");
 	}
 
 	public void setContext(Activity act){
@@ -64,8 +65,6 @@ public class AppActionProxy {
                 if (null != all) {
                     installedApps = all;
                     LogUtil.d("send message that installed Apps length = "+all.size());
-                    String json = getInstalledJSON();
-
                     if(callBack != null){
                         callBack.loadComplete(all);
                     }
@@ -245,12 +244,13 @@ public class AppActionProxy {
 	}
 
 	private long getSFSize(String path, boolean free) {
-		LogUtil.w("status: getSFSize path = " + path + ", available = " + free);
+		LogUtil.w("action: getSFSize path = " + path + ", available = " + free);
 		StatFs sf = new StatFs(path);
 		return free ? sf.getAvailableBytes() : sf.getTotalBytes();
 	}
 
 	public String getSN(){
+		LogUtil.d("action: getSN");
 		return SystemUtil.getSerialNumber(context);
 	}
 
