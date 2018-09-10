@@ -1,11 +1,21 @@
-package com.zstart.action.common;
+package com.zstart.install;
 
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+
+import com.zstart.action.common.ICallBack;
 import com.zstart.action.model.AppInfo;
 import com.zstart.action.util.LogUtil;
 
 import java.util.List;
 
-public class ActionCallBack implements ICallBack {
+public class InstallCallback implements ICallBack {
+
+    private Context context;
+    public InstallCallback(Context ctx){
+        context = ctx;
+    }
     @Override
     public void installBegin(String pkg) {
 
@@ -18,7 +28,16 @@ public class ActionCallBack implements ICallBack {
 
     @Override
     public void installSuccess(String pkg) {
-        LogUtil.d("callback install success!!! "+pkg);
+        LogUtil.w("install success...");
+        try {
+            PackageManager packageManager = context.getPackageManager();
+            Intent intent = packageManager.getLaunchIntentForPackage(pkg);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            context.getApplicationContext().startActivity(intent);
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+        }
     }
 
     @Override

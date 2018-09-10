@@ -15,34 +15,43 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.lang.reflect.Method;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.UUID;
 public final class SystemUtil {
- public static void clearMemory(Context context){
-        ActivityManager actManager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
-        List<ActivityManager.RunningAppProcessInfo> infoList = actManager.getRunningAppProcesses();
+     public static void clearMemory(Context context) {
+         try {
+             ActivityManager actManager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+             List<ActivityManager.RunningAppProcessInfo> infoList = actManager.getRunningAppProcesses();
 
-        if(infoList == null)
-            return;
-        long beforeMem = getAvailableMemory(context);
-        LogUtil.d("system memory before memory = "+beforeMem);
-        int count = 0;
-        for (int i = 0 ;i < infoList.size();i++){
-            ActivityManager.RunningAppProcessInfo info = infoList.get(i);
-            //LogUtil.w("process name = "+info.processName + ";importance = "+info.importance);
-            if(info.importance > ActivityManager.RunningAppProcessInfo.IMPORTANCE_VISIBLE){
-                String[] pkgList = info.pkgList;
-                for(int j = 0;j < pkgList.length;j++){
-                    LogUtil.d("will kill process that name = "+pkgList[j]);
-                    actManager.killBackgroundProcesses(pkgList[j]);
-                    count++;
-                }
-            }
-        }
-        long afterMem = getAvailableMemory(context);
-        LogUtil.d("system clear that kill = " + count +" process and release "+(afterMem - beforeMem)/1024 + " kb memory");
-    }
+             if (infoList == null)
+                 return;
+             long beforeMem = getAvailableMemory(context);
+             LogUtil.d("system memory before memory = " + beforeMem);
+             int count = 0;
+             for (int i = 0; i < infoList.size(); i++) {
+                 ActivityManager.RunningAppProcessInfo info = infoList.get(i);
+                 //LogUtil.w("process name = "+info.processName + ";importance = "+info.importance);
+                 if (info.importance > ActivityManager.RunningAppProcessInfo.IMPORTANCE_VISIBLE) {
+                     String[] pkgList = info.pkgList;
+                     for (int j = 0; j < pkgList.length; j++) {
+                         LogUtil.d("will kill process that name = " + pkgList[j]);
+                         actManager.killBackgroundProcesses(pkgList[j]);
+                         count++;
+                     }
+                 }
+             }
+             long afterMem = getAvailableMemory(context);
+             LogUtil.d("system clear that kill = " + count + " process and release " + (afterMem - beforeMem) / 1024 + " kb memory");
+         } catch (Exception e) {
+             e.printStackTrace();
+         }
+     }
 
     public static void clearMemory(Context context,List<String> taskPkgList){
         if(taskPkgList == null || taskPkgList.size() < 1)
@@ -284,20 +293,59 @@ public final class SystemUtil {
     }
 
     public static String getMacAddress(Context context) {
-        WifiManager wifiMg = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
-        WifiInfo info = wifiMg.getConnectionInfo();
-        if(info == null){
-            return "";
+        try {
+            List<NetworkInterface> all = Collections.list(NetworkInterface.getNetworkInterfaces());
+            for (NetworkInterface nif : all) {
+                if (!nif.getName().equalsIgnoreCase("wlan0")) continue;
+
+                byte[] macBytes = nif.getHardwareAddress();
+                if (macBytes == null) {
+                    return null;
+                }
+
+                StringBuilder res1 = new StringBuilder();
+                for (byte b : macBytes) {
+                    res1.append(String.format("%02X:", b));
+                }
+
+                if (res1.length() > 0) {
+                    res1.deleteCharAt(res1.length() - 1);
+                }
+                return res1.toString();
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
         }
-        return info.getMacAddress();
+        return null;
     }
 
     public static String getIPAddress(Context context){
-        WifiManager wifiMg = (WifiManager)context.getSystemService(Context.WIFI_SERVICE);
-        WifiInfo info = wifiMg.getConnectionInfo();
-        if(info == null)
+        InetAddress ip = null;
+        try {
+            //列举
+            Enumeration<NetworkInterface> en_netInterface = NetworkInterface.getNetworkInterfaces();
+            while (en_netInterface.hasMoreElements()) {//是否还有元素
+                NetworkInterface ni = en_netInterface.nextElement();//得到下一个元素
+                Enumeration<InetAddress> en_ip = ni.getInetAddresses();//得到一个ip地址的列举
+                while (en_ip.hasMoreElements()) {
+                    ip = en_ip.nextElement();
+                    if (!ip.isLoopbackAddress() && ip.getHostAddress().indexOf(":") == -1)
+                        break;
+                    else
+                        ip = null;
+                }
+
+                if (ip != null) {
+                    break;
+                }
+            }
+        } catch (SocketException e) {
+            e.printStackTrace();
+        }
+        if(ip == null){
             return "";
-        return intToIP(info.getIpAddress());
+        }
+        return ip.toString();
     }
 
     public static String intToIP(int ip){

@@ -7,10 +7,7 @@ import android.os.Environment;
 import android.util.Pair;
 
 import com.zstart.action.common.ICallBack;
-import com.zstart.action.constant.ActionState;
-import com.zstart.action.constant.ActionType;
 import com.zstart.action.util.LogUtil;
-import com.zstart.action.util.UnityUtil;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -35,7 +32,6 @@ public class AppWifiProxy implements IWifiProxy {
         helper = new WifiHelper(mContext, fun);
         setWifiEventListener(true);
         Pair<String, String> config = readConfig();
-        UnityUtil.sendActionNotify(ActionType.WIFI, ActionState.Begin, "0");
         if (config != null) {
             helper.initReceiver();
             helper.updateWifi(config.first, config.second);

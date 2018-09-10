@@ -13,15 +13,12 @@ import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Handler;
 import android.text.TextUtils;
-import android.widget.Toast;
 
 import com.zstart.action.common.ICallBack;
-import com.zstart.action.constant.ActionState;
-import com.zstart.action.constant.ActionType;
 import com.zstart.action.constant.ExceptionState;
 import com.zstart.action.util.LogUtil;
 import com.zstart.action.util.NetworkUtil;
-import com.zstart.action.util.UnityUtil;
+import com.zstart.action.util.ExceptionUtil;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -139,7 +136,7 @@ public final class WifiHelper {
             LogUtil.d("wifi:can not find target = " + defaultSSID);
             return;
         }
-        UnityUtil.sendActionNotify(ActionType.WIFI, ActionState.Begin, "0");
+
         NetworkInfo.DetailedState st = point.getDetailState();
         if (st == NetworkInfo.DetailedState.CONNECTING
                 || st == NetworkInfo.DetailedState.SCANNING
@@ -314,7 +311,7 @@ public final class WifiHelper {
             }
         }
         LogUtil.d("wifi:can not find the ssid = " + name);
-        callBack.connectFailed(UnityUtil.getExceptionTip(mContext, ExceptionState.Wifi_Error_SSID)+ ":" + name);
+        callBack.connectFailed(ExceptionUtil.getExceptionTip(mContext, ExceptionState.Wifi_Error_SSID)+ ":" + name);
         return false;
     }
 
@@ -422,9 +419,9 @@ public final class WifiHelper {
                         mWifiManager.saveConfiguration();//save configure
                         if (ap.getSecurity() == WifiAccessPoint.SECURITY_WEP &&
                                 ap.getDisableReason() == -1) {
-                            callBack.connectFailed(UnityUtil.getExceptionTip(mContext, ExceptionState.WifiError));
+                            callBack.connectFailed(ExceptionUtil.getExceptionTip(mContext, ExceptionState.WifiError));
                         } else {
-                            callBack.connectFailed(UnityUtil.getExceptionTip(mContext, ExceptionState.Wifi_Error_PSW));
+                            callBack.connectFailed(ExceptionUtil.getExceptionTip(mContext, ExceptionState.Wifi_Error_PSW));
                         }
 
                         synchronized (mCallback) {

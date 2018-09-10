@@ -13,8 +13,6 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Process;
 import android.os.StatFs;
-import android.widget.Toast;
-
 import com.zstart.action.AppLoadTask.IAppLoader;
 import com.zstart.action.common.ActionCallBack;
 import com.zstart.action.common.ICallBack;
@@ -25,7 +23,11 @@ import com.zstart.action.util.LogUtil;
 import com.zstart.action.util.SystemUtil;
 import com.zstart.action.wifi.AppWifiProxy;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -34,7 +36,7 @@ public class AppActionProxy {
 	public final static String SHARED_KEY_MAIN = "com.zstart.apps";
 	public final static String SHARED_KEY_SUB = "com.zstart.apps.installing";
 
-	private Activity context;
+	private Context context;
 	private ArrayList<AppInfo> installedApps = new ArrayList<>();
 	private AppLoadTask appLoader;
 	private HandlerThread loadThread;
@@ -47,10 +49,10 @@ public class AppActionProxy {
         LogUtil.d("Init AppActionProxy....");
 	}
 
-	public void setContext(Activity act){
+	public void setContext(Context act){
         this.context = act;
         iconHelper = new LauncherIconHelper(this.context);
-        wifiProxy = new AppWifiProxy(act, callBack);
+        //wifiProxy = new AppWifiProxy(act, callBack);
     }
 
 	public void setCallBack(ICallBack fun){
@@ -109,46 +111,32 @@ public class AppActionProxy {
 		sp.edit().remove(SHARED_KEY_SUB).apply();
 	}
 	
-	public boolean install(String filePath,String pkgName) {
+	public synchronized boolean install(String appPath,String appPkg,String selfPkg) {
 		try{		
-			if(isInstalling(pkgName)){
-				LogUtil.d("isApkInstalling...."+pkgName);
+			if(isInstalling(appPkg)){
+				LogUtil.d("isApkInstalling...."+appPkg);
 				return false;
 			}
 			
-			LogUtil.d("installAPK...."+filePath+" , "+pkgName);
-			File download = new File(filePath);
-			if (!download.exists()) {
-				String[] array = filePath.split("/");
-				String apkName = array[array.length - 1];
-				String tmpPath = filePath.replace(apkName,"TMP_"+apkName);
-				download = new File(tmpPath);
-				if(download.exists()){
-					download.renameTo(new File(filePath));
-				}else{
-					LogUtil.d("install file invalid : " + filePath);
-					return false;
-				}
+			LogUtil.d("installAPK...."+appPath+" , "+appPkg);
+			File file = new File(appPath);
+			if (!file.exists()) {
+				return false;
 			}
 	
-			LogUtil.v("installAPK that pkgName : " + pkgName);
-			/*Intent intent = new Intent(context, SilentInstallService.class);
-			intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-			intent.putExtra("data", pkgName+"|"+filePath);
-			context.startService(intent);*/
-			
-			Thread thread = new Thread(new SilentInstallTask(this.context, pkgName,filePath , callBack));
+			LogUtil.v("installAPK that pkgName : " + appPkg);
+			Thread thread = new Thread(new SilentInstallTask(this.context,selfPkg, appPkg, appPath));
 			thread.start();
-			return true;
+			return  true;
 		}catch(Exception e){
-			LogUtil.d("install file exception : " +e.toString());
+			e.printStackTrace();
 			return false;
 		}
 	}
-	
+
 	public void uninstall(String packageName) {
 		LogUtil.d("silent uninstall app:" + packageName);
-		Thread thread = new Thread(new SilentUninstallTask(this.context, packageName, callBack));
+		Thread thread = new Thread(new SilentUninstallTask(this.context, packageName));
 		thread.start();
 	}
 
@@ -194,15 +182,6 @@ public class AppActionProxy {
 			return;
 		installedApps.add(info);
 	}
-
-    public void toast(final String message){
-        context.runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                Toast.makeText(context.getApplicationContext(), message, Toast.LENGTH_LONG).show();
-            }
-        });
-    }
 	
 	public AppInfo getApp(String pkgName){
 		AppInfo info = getInfo(pkgName);

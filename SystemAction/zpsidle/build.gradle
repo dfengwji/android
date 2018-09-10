@@ -9,6 +9,7 @@ android {
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        multiDexEnabled true
     }
     buildTypes {
         release {
@@ -28,29 +29,10 @@ android {
 
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
-}
-
-task makeJar(type:Jar){
-    def SDK_BASENAME = "SystemAction"
-    def SDK_VERSION = "_V1.1"
-    def sdkDestinationPath = "build/"
-    def zipFile = file('build/intermediates/bundles/debug/classes.jar')
-    from zipTree(zipFile)
-    destinationDir = file(sdkDestinationPath)
-    doLast{
-        copy {
-            def baseName = SDK_BASENAME+SDK_VERSION+".jar"
-            delete sdkDestinationPath + baseName
-            from 'build/SystemAction.jar'
-            into 'build/libs/'
-            rename('SystemAction.jar',baseName)
-            println("make jar complete!!!")
-        }
-    }
+    implementation project(':systemaction')
 }
 
 assemble.doLast {
     println("assemble complete!!!")
-    //tasks.makeJar.execute()
 }
 

@@ -3,8 +3,12 @@ package com.zstart.action.util;
 import android.util.Log;
 
 public final class LogUtil {
-	private static final String TAG = "IVRApp";
+	private static String TAG = "ZStart";
 	public static boolean isDebug = true;
+
+	public static void setTag(String tag){
+		TAG = tag;
+	}
 
 	public static void i(String msg) {
 		if (isDebug)

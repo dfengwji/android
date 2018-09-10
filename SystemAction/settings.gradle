@@ -1,1 +1,1 @@
-include ':systemaction', ':systemstatus'
+include ':systemaction', ':systemstatus', ':sysinstall', ':zpsidle'
