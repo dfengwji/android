@@ -1,6 +1,9 @@
 package com.zstart.install;
 
+import android.app.ActivityManager;
 import android.app.Service;
+import android.app.usage.UsageStats;
+import android.app.usage.UsageStatsManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -11,7 +14,15 @@ import android.os.IBinder;
 
 import com.zstart.action.AppActionProxy;
 import com.zstart.action.util.LogUtil;
+import com.zstart.action.util.SystemUtil;
+
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.List;
+import java.util.SortedMap;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.TreeMap;
 
 public class InstallService extends Service {
     public class InstallBinder extends Binder {
@@ -29,7 +40,8 @@ public class InstallService extends Service {
                     packName = intent.getDataString().split(":")[1];
                     LogUtil.v("install:action apk had added:" + packName);
                     if(packName.equals(appPackage)){
-                        run();
+                        isInstalling = false;
+                        runApp(appPackage);
                     }
                     break;
                 case Intent.ACTION_PACKAGE_REMOVED:
@@ -58,6 +70,7 @@ public class InstallService extends Service {
     private String appPath = "";
     private String appPackage = "";
     private AppActionProxy actionProxy;
+    private boolean isInstalling = false;
     @Override
     public IBinder onBind(Intent intent) {
         return binder;
@@ -66,7 +79,7 @@ public class InstallService extends Service {
     @Override
     public void onCreate(){
         super.onCreate();
-        LogUtil.d("install service create!!!!");
+        LogUtil.d("service create!!!!");
 
         IntentFilter tmpFilter = new IntentFilter();
         tmpFilter.addAction(Intent.ACTION_PACKAGE_ADDED);
@@ -83,39 +96,90 @@ public class InstallService extends Service {
         //actionProxy.setCallBack(new InstallCallback(this));
 
         setActivityController();
+        TimerTask timerTask = new TimerTask() {
+            @Override
+            public void run() {
+                updateTimerTask();
+            }
+        };
+        Timer timer = new Timer(false);
+        timer.schedule(timerTask, 1000, 5000);
+    }
+
+    private void updateTimerTask() {
+        if(isInstalling){
+            return;
+        }
+        String pkg = getForegroundPackage(this.getApplicationContext());
+        if(pkg != null && !pkg.equals("com.zps.idle")){
+            LogUtil.i("foreground pkg = "+pkg);
+            runApp("com.zps.idle");
+        }
+    }
+
+    public static String getForegroundPackage(Context context){
+        final int PROCESS_STATE_TOP = 2;
+        ActivityManager.RunningAppProcessInfo currentInfo = null;
+        try {
+            Field field = ActivityManager.RunningAppProcessInfo.class.getDeclaredField("processState");
+            if(field == null){
+                return "";
+            }
+            ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+            List<ActivityManager.RunningAppProcessInfo> appList = am.getRunningAppProcesses();
+            for (ActivityManager.RunningAppProcessInfo app : appList) {
+                if (app.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND
+                        && app.importanceReasonCode == ActivityManager.RunningAppProcessInfo.REASON_UNKNOWN) {
+                    Integer state = field.getInt(app);
+                    if (state == PROCESS_STATE_TOP) {
+                        currentInfo = app;
+                        break;
+                    }
+                }
+            }
+            if (currentInfo != null) {
+                return currentInfo.processName;
+            } else {
+                return "";
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "";
+        }
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId){
-        appPath = intent.getStringExtra("path");
-        appPackage = intent.getStringExtra("pkg");
-        LogUtil.d("install service start!!!!path = " + appPath);
-        flags = START_STICKY;
-        return super.onStartCommand(intent, flags, startId);
+        LogUtil.d("service start!!!!path = " + appPath);
+        super.onStartCommand(intent, flags, startId);
+        return START_STICKY;
     }
 
     @Override
     public void onDestroy() {
-        LogUtil.d("install service destroy!!!!");
+        LogUtil.d("service destroy!!!!");
         super.onDestroy();
     }
 
     public void installApp(String pkg,String path){
+        if(pkg == null || path == null){
+            return;
+        }
         appPath = path;
         appPackage = pkg;
-        LogUtil.d("install service: try install app ....pkg = "+ appPackage + ";path = " + path);
-        actionProxy.install(path, pkg, MainActivity.SELF_PACKAGE);
+        LogUtil.d("service: try install app ....pkg = "+ appPackage + ";path = " + path);
+        isInstalling = actionProxy.install(path, pkg, MainActivity.SELF_PACKAGE);
     }
 
-    private void run(){
-        LogUtil.v("install:run apk ..." + appPackage);
+    public void runApp(String pkg){
+        LogUtil.v("service:run apk ..." + pkg);
         try {
             PackageManager packageManager = this.getPackageManager();
-            Intent intent = packageManager.getLaunchIntentForPackage(appPackage);
+            Intent intent = packageManager.getLaunchIntentForPackage(pkg);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
             this.getApplicationContext().startActivity(intent);
         }catch (Exception e){
-
+            e.printStackTrace();
         }
     }
 

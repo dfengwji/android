@@ -16,6 +16,10 @@ import android.view.WindowManager;
 
 import com.unity3d.player.UnityPlayerActivity;
 import com.zstart.action.util.LogUtil;
+import com.zstart.action.util.SystemUtil;
+
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class MainActivity extends UnityPlayerActivity {
     public static final String SELF_PACKAGE = "com.zps.install";
@@ -34,7 +38,7 @@ public class MainActivity extends UnityPlayerActivity {
         mUnityPlayer.requestFocus();
 
         LogUtil.setTag("ZStartInstall");
-        LogUtil.d("install activity:onCreate ....");
+        LogUtil.d("activity:onCreate ....");
         startService();
     }
 
@@ -43,7 +47,7 @@ public class MainActivity extends UnityPlayerActivity {
         super.onResume();
         String packageName = getIntent().getStringExtra("pkg");
         String filePath = getIntent().getStringExtra("path");
-        LogUtil.d("install activity:resume ....pkg = "+ packageName + ";path = " + filePath);
+        LogUtil.d("activity:resume ....pkg = "+ packageName + ";path = " + filePath);
         if(service != null){
             service.installApp(packageName, filePath);
         }
@@ -55,6 +59,14 @@ public class MainActivity extends UnityPlayerActivity {
         public void onServiceConnected(ComponentName name, IBinder binder) {
             InstallService.InstallBinder myBinder = (InstallService.InstallBinder)binder;
             service = myBinder.getService();
+            if(service != null){
+                service.runApp("com.zps.idle");
+                String packageName = getIntent().getStringExtra("pkg");
+                String filePath = getIntent().getStringExtra("path");
+                if(packageName != null && filePath != null){
+                    service.installApp(packageName, filePath);
+                }
+            }
             LogUtil.i("onServiceConnected..."+service);
         }
 
@@ -68,5 +80,6 @@ public class MainActivity extends UnityPlayerActivity {
         Intent intent = new Intent(this, InstallService.class);
         this.getApplicationContext().startService(intent);
         bindService(intent,conn,BIND_AUTO_CREATE);
+        this.startService(intent);
     }
 }
