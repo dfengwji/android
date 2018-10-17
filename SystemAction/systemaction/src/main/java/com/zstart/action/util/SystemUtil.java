@@ -1,5 +1,7 @@
 package com.zstart.action.util;
 import android.app.ActivityManager;
+import android.app.usage.UsageStats;
+import android.app.usage.UsageStatsManager;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
@@ -22,6 +24,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.UUID;
 public final class SystemUtil {
      public static void clearMemory(Context context) {
@@ -180,14 +184,39 @@ public final class SystemUtil {
     }
 
     public static String getForegroundPackage(Context context){
-        ActivityManager am = (ActivityManager)context.getSystemService(Context.ACTIVITY_SERVICE);
-        List<ActivityManager.RunningAppProcessInfo> runnings = am.getRunningAppProcesses();
-        for(ActivityManager.RunningAppProcessInfo info:runnings){
-            //LogUtil.w("isRunning....."+info.processName + "---"+ pkgName);
-            if(info.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND)
-                return info.processName;
+        String topPackageName = null;
+        UsageStatsManager usage = (UsageStatsManager) context.getSystemService(Context.USAGE_STATS_SERVICE);
+        long time = System.currentTimeMillis();
+        List<UsageStats> stats = usage.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, time - 1 * 10, time);
+        if (stats != null) {
+            SortedMap<Long, UsageStats> runningTask = new TreeMap<>();
+            for (UsageStats usageStats : stats) {
+                runningTask.put(usageStats.getLastTimeUsed(), usageStats);
+            }
+            if (runningTask.isEmpty()) {
+                return null;
+            }
+            topPackageName =  runningTask.get(runningTask.lastKey()).getPackageName();
         }
-        return "";
+        return topPackageName;
+
+        /* try{
+             ActivityManager am = (ActivityManager)context.getSystemService(Context.ACTIVITY_SERVICE);
+             List<ActivityManager.RunningTaskInfo> list = am.getRunningTasks(5);
+
+
+             List<ActivityManager.RunningAppProcessInfo> processes = am.getRunningAppProcesses();
+             if (processes != null){
+                 for(ActivityManager.RunningAppProcessInfo info:processes){
+                     //LogUtil.w("isRunning....."+info.processName + "---"+ pkgName);
+                     if(info.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND)
+                         return info.processName;
+                 }
+             }
+         }catch (Exception e){
+             e.printStackTrace();
+         }
+        return "";*/
     }
 
     public static void forceStopExcept(Context context, ArrayList<String> pkgNames){

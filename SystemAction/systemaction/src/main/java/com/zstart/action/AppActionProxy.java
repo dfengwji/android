@@ -112,6 +112,9 @@ public class AppActionProxy {
 	}
 	
 	public synchronized boolean install(String appPath,String appPkg,String selfPkg) {
+		if(appPath == null || appPkg == null){
+			return false;
+		}
 		try{		
 			if(isInstalling(appPkg)){
 				LogUtil.d("isApkInstalling...."+appPkg);

@@ -1,9 +1,13 @@
 package com.zps.action;
 
+import android.app.KeyguardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.graphics.PixelFormat;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.PowerManager;
@@ -19,7 +23,10 @@ import com.zstart.action.AppActionProxy;
 import com.zstart.action.util.LogUtil;
 import com.zstart.action.util.SystemUtil;
 
+import java.io.DataOutputStream;
 import java.io.File;
+import java.io.IOException;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import com.unity3d.player.UnityPlayerActivity;
 
@@ -31,20 +38,66 @@ public class MainActivity extends UnityPlayerActivity{
     protected void onCreate (Bundle savedInstanceState)
     {
         requestWindowFeature(Window.FEATURE_NO_TITLE);
+        super.onCreate(savedInstanceState);
         Window _window = getWindow();
         _window.setFormat(PixelFormat.RGBX_8888);
-        _window.getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_HIDE_NAVIGATION);
-        WindowManager.LayoutParams params = _window.getAttributes();
-        params.systemUiVisibility = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION;
-        _window.setAttributes(params);
-        super.onCreate(savedInstanceState);
+        _window.getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                | View.SYSTEM_UI_FLAG_IMMERSIVE);
 
+        //runCmd("pm disable com.android.systemui && service call activity 42 s16 com.android.systemui");
         mUnityPlayer.requestFocus();
+        _window.setStatusBarColor(Color.TRANSPARENT);
+        _window.setNavigationBarColor(Color.TRANSPARENT);
+        disableNavigation();
+        LogUtil.setTag("IVR_ZPS");
         LogUtil.d("main activity:onCreate ....");
         actionProxy = new AppActionProxy();
         actionProxy.setContext(this);
         brightness = getScreenBrightness();
         SystemUtil.clearMemory(this);
+        unlockScreen();
+    }
+
+    public void disableNavigation(){
+        //"statusbar"
+        try {
+            Object service = getSystemService ("statusbar");
+            Class <?> manager = Class.forName("android.app.StatusBarManager");
+            Method expand = manager.getMethod ("disable",int.class);
+            expand.invoke (service,1);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void unlockScreen(){
+        try{
+            KeyguardManager km= (KeyguardManager) this.getSystemService(Context.KEYGUARD_SERVICE);
+            KeyguardManager.KeyguardLock kl = km.newKeyguardLock("IVR_ZPS");
+            kl.disableKeyguard();
+
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+    }
+
+    public void runCmd(String cmd) {
+        DataOutputStream os;
+        try {
+            Process process = Runtime.getRuntime().exec("su");
+            os = new DataOutputStream(process.getOutputStream());
+            os.writeBytes(cmd + "\n");
+            os.writeBytes("exit\n");
+            os.flush();
+            os.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public String getSN(){
