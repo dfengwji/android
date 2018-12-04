@@ -27,12 +27,12 @@ public class SilentInstallTask implements Runnable{
 	private String selfPkg;
 	private ArrayList<String> installing;
 	private ICallBack callBack = null;
-	public SilentInstallTask(Context context,String self, String appPkg, String path) {
+	public SilentInstallTask(Context context,String self, String appPkg, String path, ICallBack fun) {
 		this.context = context;
 		this.selfPkg = self;
 		this.appPkg = appPkg;
 		this.appPath = path;
-		//callBack = fun;
+		callBack = fun;
 		installing = new ArrayList<>();
 	}
 	@Override

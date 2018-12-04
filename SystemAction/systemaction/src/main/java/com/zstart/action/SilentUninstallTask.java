@@ -17,29 +17,29 @@ public class SilentUninstallTask implements Runnable{
 	String packageName;
 	String result;
 	Context context;
-	//ICallBack callBack;
-	public SilentUninstallTask(Context context, String packageName) {
+	ICallBack callBack;
+	public SilentUninstallTask(Context context, String packageName, ICallBack fun) {
 		this.context = context;
 		this.packageName = packageName;
-		//this.callBack = fun;
+		this.callBack = fun;
 	}
 
 	@Override
 	public void run() {
 		result = "";
-		if (uninstallPackage(packageName))
+		if (uninstallApp(packageName))
 		{
 			LogUtil.d("silent uninstall app success!!!"+packageName);
-			//if(callBack != null){
-			//	callBack.uninstallSuccess(packageName);
-			//}
+			if(callBack != null){
+				callBack.uninstallSuccess(packageName);
+			}
 		}
 		else
 		{
 			LogUtil.d("silent uninstall app fail!!!"+packageName);
-			//if(callBack != null){
-			//	callBack.uninstallFailed(packageName, result);
-			//}
+			if(callBack != null){
+				callBack.uninstallFailed(packageName, result);
+			}
 		}
 	}
 
@@ -54,10 +54,10 @@ public class SilentUninstallTask implements Runnable{
 		InputStream errorInput = null;
 		InputStream inputStream = null;
 		String result = "";
-		//Process process = null;
 		String error = "";
+		Process process = null;
 		try {
-			Process process = Runtime.getRuntime().exec(cmd);
+			process = Runtime.getRuntime().exec(cmd);
 			errorInput = process.getErrorStream();
 			inputStream = process.getInputStream();
 			BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
@@ -69,11 +69,11 @@ public class SilentUninstallTask implements Runnable{
 			while ((line = reader.readLine()) != null) {
 				error += line;
 			}
-			LogUtil.d("install result = " + result+";error = "+error);
-		} catch (IOException e) {
+			LogUtil.d("uninstall result = " + result+";error = "+error);
+		} catch (Exception e) {
 			e.printStackTrace();
 		} finally {
-            /*try {
+            try {
                 if (errorInput != null) {
                     errorInput.close();
                 }
@@ -85,13 +85,13 @@ public class SilentUninstallTask implements Runnable{
             }
             if (process != null) {
                 process.destroy();
-            }*/
+            }
 		}
 		if (result == null || !"Success".equals(result)) {
-			LogUtil.d("install fail....");
+			LogUtil.d("uninstall fail....");
 			return false;
 		} else {
-			LogUtil.d("install success!");
+			LogUtil.d("uninstall success!");
 			return true;
 		}
 	}
@@ -123,16 +123,16 @@ public class SilentUninstallTask implements Runnable{
 		} finally {
 			try {
 				if (errIs != null) {
-					//errIs.close();
+					errIs.close();
 				}
 				if (inIs != null) {
-					//inIs.close();
+					inIs.close();
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
 			if (process != null) {
-				//process.destroy();
+				process.destroy();
 			}
 		}
 		if (result != null && (result.endsWith("Success") || result.endsWith("Success\n"))) {

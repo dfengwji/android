@@ -128,7 +128,7 @@ public class AppActionProxy {
 			}
 	
 			LogUtil.v("installAPK that pkgName : " + appPkg);
-			Thread thread = new Thread(new SilentInstallTask(this.context,selfPkg, appPkg, appPath));
+			Thread thread = new Thread(new SilentInstallTask(this.context,selfPkg, appPkg, appPath,callBack ));
 			thread.start();
 			return  true;
 		}catch(Exception e){
@@ -139,7 +139,7 @@ public class AppActionProxy {
 
 	public void uninstall(String packageName) {
 		LogUtil.d("silent uninstall app:" + packageName);
-		Thread thread = new Thread(new SilentUninstallTask(this.context, packageName));
+		Thread thread = new Thread(new SilentUninstallTask(this.context, packageName, callBack));
 		thread.start();
 	}
 
