@@ -40,6 +40,14 @@ public class AppWifiProxy implements IWifiProxy {
         }
     }
 
+    public AppWifiProxy(Context context,ICallBack fun, String ssid,String pwd){
+        mContext = context;
+        helper = new WifiHelper(mContext, fun);
+        setWifiEventListener(true);
+        helper.initReceiver();
+        helper.updateWifi(ssid, pwd);
+    }
+
     private synchronized Pair<String, String> readConfig() {
         String path = Environment.getExternalStorageDirectory().getPath() + "/wifi.cf";
         try {

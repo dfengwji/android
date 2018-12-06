@@ -153,7 +153,6 @@ public final class WifiHelper {
     }
 
     public boolean checkConnected(String target) {
-
         NetworkInfo networkInfo = connectManager.getActiveNetworkInfo();
         int type = ConnectivityManager.TYPE_DUMMY;
         if(networkInfo != null)
@@ -290,7 +289,6 @@ public final class WifiHelper {
                     LogUtil.d("wifi: try to connect saved SSID = " + wifi.SSID + " and psw = " + psw);
                     mWifiManager.updateNetwork(wifi);
                     mWifiManager.saveConfiguration();
-                    // mWifiManager.(wifi.networkId, mConnectListener);
                     return true;
                 }
             }
@@ -302,16 +300,16 @@ public final class WifiHelper {
                 LogUtil.d("wifi: try to connect SSID = " + result.SSID + " and psw = " + psw);
                 int security = WifiAccessPoint.getSecurity(result);
                 WifiConfiguration config = createOpenNetworkConfig(name, psw, security);
-                //int newWorkId = mWifiManager.addNetwork(config);
-                //config.networkId = newWorkId;
-                //boolean isConn = mWifiManager.enableNetwork(config.networkId, true);
-                //mWifiManager.saveConfiguration();
-                //mWifiManager.connect(config, mConnectListener);
+                int newWorkId = mWifiManager.addNetwork(config);
+                config.networkId = newWorkId;
+                mWifiManager.enableNetwork(config.networkId, true);
+                mWifiManager.saveConfiguration();
                 return true;
             }
         }
         LogUtil.d("wifi:can not find the ssid = " + name);
-        callBack.connectFailed(ExceptionUtil.getExceptionTip(mContext, ExceptionState.Wifi_Error_SSID)+ ":" + name);
+        if(callBack != null)
+            callBack.connectFailed(ExceptionUtil.getExceptionTip(mContext, ExceptionState.Wifi_Error_SSID)+ ":" + name);
         return false;
     }
 
@@ -323,7 +321,7 @@ public final class WifiHelper {
 
     //忘记网络
     public void forgetNetwork(int netId) {
-        //mWifiManager.disableNetwork(netId);
+        mWifiManager.disableNetwork(netId);
     }
 
     //断开wifi,但不会移除configuration
@@ -419,9 +417,11 @@ public final class WifiHelper {
                         mWifiManager.saveConfiguration();//save configure
                         if (ap.getSecurity() == WifiAccessPoint.SECURITY_WEP &&
                                 ap.getDisableReason() == -1) {
-                            callBack.connectFailed(ExceptionUtil.getExceptionTip(mContext, ExceptionState.WifiError));
+                            if(callBack != null)
+                                callBack.connectFailed(ExceptionUtil.getExceptionTip(mContext, ExceptionState.WifiError));
                         } else {
-                            callBack.connectFailed(ExceptionUtil.getExceptionTip(mContext, ExceptionState.Wifi_Error_PSW));
+                            if(callBack != null)
+                                callBack.connectFailed(ExceptionUtil.getExceptionTip(mContext, ExceptionState.Wifi_Error_PSW));
                         }
 
                         synchronized (mCallback) {

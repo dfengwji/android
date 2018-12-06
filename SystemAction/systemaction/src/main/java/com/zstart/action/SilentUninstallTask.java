@@ -96,8 +96,13 @@ public class SilentUninstallTask implements Runnable{
 		}
 	}
 
-	private boolean uninstallApp(String packageName) {
-		String[] args = { "pm", "uninstall", packageName };
+	private boolean uninstallApp(String pkgName) {
+        if (null == pkgName || pkgName.isEmpty())
+        {
+            LogUtil.d("uninstall fail....not package is empty!!!");
+            return false;
+        }
+		String[] args = { "pm", "uninstall", pkgName };
 		ProcessBuilder processBuilder = new ProcessBuilder(args);
 		Process process = null;
 		InputStream errIs = null;
