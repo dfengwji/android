@@ -32,25 +32,28 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public final class WifiHelper {
     private static final String TAG = "WifiHelper";
-    private AtomicBoolean mConnected = new AtomicBoolean(false);
     private WifiManager mWifiManager;
     private ConnectivityManager connectManager;
     private Context mContext;
     private List<WifiAccessPoint> mWifiAps;
     private BroadcastReceiver mReceiver;
-    private final Collection<IWifiProxy> mCallback = new ArrayList<>();
-    private NetworkInfo.DetailedState mLastState;
-    private WifiInfo mLastInfo;
     private boolean isScanning = false;
     private String defaultSSID = "";
     private String defaultPassword = "";
     private ICallBack callBack;
+
+    //能够阻止wifi进入睡眠状态，使wifi一直处于活跃状态
+    private WifiManager.WifiLock mWifiLock;
+
+    //已连接过的wifi列表
+    private List<WifiConfiguration> wifiConfigurationList;
 
     private  Handler wifiHandler;
 
     public WifiHelper(Context context,ICallBack fun) {
         mContext = context;
         callBack = fun;
+        wifiConfigurationList = new ArrayList<>();
         mWifiManager = (WifiManager) mContext.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         connectManager = (ConnectivityManager) mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
         mWifiAps = new ArrayList<>();
@@ -58,27 +61,34 @@ public final class WifiHelper {
             @Override
             public void onReceive(Context context, Intent intent) {
                 String action = intent.getAction();
-                LogUtil.d("wifi:handleEvent action->" + action);
                 if (WifiManager.WIFI_STATE_CHANGED_ACTION.equals(action)) {
-                    updateWifiState(intent.getIntExtra(WifiManager.EXTRA_WIFI_STATE, WifiManager.WIFI_STATE_UNKNOWN));
+                    int state = intent.getIntExtra(WifiManager.EXTRA_WIFI_STATE, WifiManager.WIFI_STATE_UNKNOWN);
+                    LogUtil.d("wifi: state changed that = "+state);
+                    updateWifiState(state);
                 } else if (WifiManager.SCAN_RESULTS_AVAILABLE_ACTION.equals(action)) {
+                    LogUtil.d("wifi: scan complete!!!");
                     updateAccessPoints();
                 } else if (WifiManager.SUPPLICANT_STATE_CHANGED_ACTION.equals(action)) {
+                    //密码错误
                     SupplicantState state = intent.getParcelableExtra(WifiManager.EXTRA_NEW_STATE);
-                    if (!mConnected.get()) {
-                        updateConnectionState(WifiInfo.getDetailedStateOf(state), action);
-                    }
+                    //错误码
+                    int code = intent.getIntExtra(WifiManager.EXTRA_SUPPLICANT_ERROR, WifiManager.ERROR_AUTHENTICATING);
+                    LogUtil.d("wifi: SUPPLICANT state = "+state+" ; error code = "+code);
                 } else if (WifiManager.NETWORK_STATE_CHANGED_ACTION.equals(action)) {
                     NetworkInfo info = intent.getParcelableExtra(WifiManager.EXTRA_NETWORK_INFO);
-                    LogUtil.i("wifi:is connected = "+info.isConnectedOrConnecting());
-                    mConnected.set(info.isConnected());
+                    LogUtil.i("wifi:network state changed that is connected = "+info.isConnectedOrConnecting());
                     if(!info.isConnectedOrConnecting()) {
                         updateAccessPoints();
-                        updateConnectionState(info.getDetailedState(), action);
+                        //updateConnectionState(info.getDetailedState(), action);
                         checkConnectTarget();
+                    }else{
+                        if(callBack != null){
+                            callBack.connectSuccess(defaultSSID);
+                        }
                     }
                 } else if (ConnectivityManager.CONNECTIVITY_ACTION.equals(action)) {
                     boolean connected = NetworkUtil.isWifiConnected(context);
+                    LogUtil.i("wifi:connectivity action that is connected = "+connected);
                     if (!connected) {
                         removeAllConfiguration();
                         mWifiAps.clear();
@@ -147,9 +157,7 @@ public final class WifiHelper {
             return;
         }
         LogUtil.d("wifi:ready to connect default ssid = " + defaultSSID + " and detail state = " + st);
-        if(checkConnected(defaultSSID))
-            return;
-        connectNetWork(defaultSSID, defaultPassword);
+        connectNetwork(defaultSSID, defaultPassword);
     }
 
     public boolean checkConnected(String target) {
@@ -175,6 +183,7 @@ public final class WifiHelper {
         if (ssid.equals(convertToQuotedString(target)))
             return true;
         mWifiManager.disableNetwork(netID);
+        mWifiManager.removeNetwork(netID);
         mWifiManager.disconnect();
         return false;
     }
@@ -223,20 +232,6 @@ public final class WifiHelper {
         return isScanning;
     }
 
-    //注册Wifi事件通知
-    public void registerCallback(IWifiProxy callback) {
-        synchronized (mCallback) {
-            mCallback.add(callback);
-        }
-    }
-
-    //注销Wifi事件通知
-    public void unregisterCallback(IWifiProxy callback) {
-        synchronized (mCallback) {
-            mCallback.remove(callback);
-        }
-    }
-
     //获取已连接的wifi
     public WifiAccessApInfo getActiveAccessPoint() {
         for (WifiAccessPoint ap : mWifiAps) {
@@ -245,6 +240,48 @@ public final class WifiHelper {
             }
         }
         return null;
+    }
+
+    public boolean removeWifi(int netId) {
+        return mWifiManager.removeNetwork(netId);
+    }
+
+    /**
+     * 移除wifi
+     *
+     * @param SSID wifi名
+     */
+    public boolean removeWifi(String SSID) {
+        WifiConfiguration conf = getExitsWifiConfig(SSID);
+        if (conf != null) {
+            return removeWifi(conf.networkId);
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * 创建一个WifiLock
+     **/
+    public void createWifiLock() {
+        mWifiLock = this.mWifiManager.createWifiLock("testLock");
+    }
+
+    /**
+     * 锁定WifiLock，当下载大文件时需要锁定
+     **/
+    public void acquireWifiLock() {
+        mWifiLock.acquire();
+    }
+
+    /**
+     * 解锁WifiLock
+     **/
+    public void releaseWifilock() {
+        if (mWifiLock.isHeld()) {
+            //判断时候锁定
+            mWifiLock.acquire();
+        }
     }
 
     //Wifi帐号是否配置过
@@ -264,6 +301,59 @@ public final class WifiHelper {
         return false;
     }
 
+    public void addNetWork(String SSID) {
+        int netId = -1;
+        if (getExitsWifiConfig(SSID) != null) {
+            //这个wifi是连接过的，如果这个wifi在连接之后改了密码，那就只能手动去删除了
+            netId = getExitsWifiConfig(SSID).networkId;
+            //这个方法的第一个参数是需要连接wifi网络的networkId，第二个参数是指连接当前wifi网络是否需要断开其他网络
+            //无论是否连接上，都返回true。。。。
+            mWifiManager.enableNetwork(netId, true);
+        }
+    }
+
+    /**
+     * 连接指定wifi
+     * 6.0以上版本，直接查找时候有连接过，连接过的拿出wifiConfiguration用
+     * 不要去创建新的wifiConfiguration,否者失败
+     */
+    public void addNetWork(String SSID, String password, int Type) {
+        int netId = -1;
+        /*先执行删除wifi操作，1.如果删除的成功说明这个wifi配置是由本APP配置出来的；
+                           2.这样可以避免密码错误之后，同名字的wifi配置存在，无法连接；
+                           3.wifi直接连接成功过，不删除也能用, netId = getExitsWifiConfig(SSID).networkId;*/
+        if (removeWifi(SSID)) {
+            //移除成功，就新建一个
+            netId = mWifiManager.addNetwork(createNetworkConfig(SSID, password, Type));
+        } else {
+            //删除不成功，要么这个wifi配置以前就存在过，要么是还没连接过的
+            if (getExitsWifiConfig(SSID) != null) {
+                //这个wifi是连接过的，如果这个wifi在连接之后改了密码，那就只能手动去删除了
+                netId = getExitsWifiConfig(SSID).networkId;
+            } else {
+                //没连接过的，新建一个wifi配置
+                netId = mWifiManager.addNetwork(createNetworkConfig(SSID, password, Type));
+            }
+        }
+
+        //这个方法的第一个参数是需要连接wifi网络的networkId，第二个参数是指连接当前wifi网络是否需要断开其他网络
+        //无论是否连接上，都返回true。。。。
+        mWifiManager.enableNetwork(netId, true);
+    }
+
+    /**
+     * 获取配置过的wifiConfiguration
+     */
+    public WifiConfiguration getExitsWifiConfig(String SSID) {
+        wifiConfigurationList = mWifiManager.getConfiguredNetworks();
+        for (WifiConfiguration wifiConfiguration : wifiConfigurationList) {
+            if (wifiConfiguration.SSID.equals("\"" + SSID + "\"")) {
+                return wifiConfiguration;
+            }
+        }
+        return null;
+    }
+
     /**
      * Add quotes around the string.
      *
@@ -275,20 +365,20 @@ public final class WifiHelper {
     }
 
     //连接Wifi网络
-    public boolean connectNetWork(String name, String psw) {
-        boolean find = isConfigured(name);
-        LogUtil.d("wifi:isConfigured find = " + find + " and ssid = " + name);
-        if (find) {
-            List<WifiConfiguration> wifiConfigList = mWifiManager.getConfiguredNetworks();
-            for (WifiConfiguration wifi : wifiConfigList) {
-                if ((wifi.SSID).equals(convertToQuotedString(name))) {
-                    if (psw != null && !wifi.preSharedKey.equals(psw)) {
-                        wifi.preSharedKey = psw;
+    public boolean connectNetwork(String name, String psw) {
+        LogUtil.d("wifi: connectNetwork that ssid = " + name);
+        List<WifiConfiguration> configList = mWifiManager.getConfiguredNetworks();
+        if(configList != null) {
+            for (WifiConfiguration conf : configList) {
+                if ((conf.SSID).equals(convertToQuotedString(name))) {
+                    if (psw != null && !conf.preSharedKey.equals(psw)) {
+                        conf.preSharedKey = psw;
                         LogUtil.d("wifi:reset password = " + psw);
                     }
-                    LogUtil.d("wifi: try to connect saved SSID = " + wifi.SSID + " and psw = " + psw);
-                    mWifiManager.updateNetwork(wifi);
+                    LogUtil.d("wifi: try to connect saved SSID = " + conf.SSID + " and psw = " + psw);
+                    mWifiManager.updateNetwork(conf);
                     mWifiManager.saveConfiguration();
+                    mWifiManager.enableNetwork(conf.networkId, true);
                     return true;
                 }
             }
@@ -298,8 +388,8 @@ public final class WifiHelper {
         for (ScanResult result : results) {
             if ((result.SSID).equals(name)) {
                 LogUtil.d("wifi: try to connect SSID = " + result.SSID + " and psw = " + psw);
-                int security = WifiAccessPoint.getSecurity(result);
-                WifiConfiguration config = createOpenNetworkConfig(name, psw, security);
+                int security = WifiConstant.getSecurity(result);
+                WifiConfiguration config = createNetworkConfig(name, psw, security);
                 int newWorkId = mWifiManager.addNetwork(config);
                 config.networkId = newWorkId;
                 mWifiManager.enableNetwork(config.networkId, true);
@@ -346,7 +436,7 @@ public final class WifiHelper {
     }
 
     //生成Configuration
-    private WifiConfiguration createOpenNetworkConfig(String SSID, String pwd, int security) {
+    private WifiConfiguration createNetworkConfig(String SSID, String pwd, int security) {
         WifiConfiguration config = new WifiConfiguration();
 
         config.allowedAuthAlgorithms.clear();
@@ -357,10 +447,10 @@ public final class WifiHelper {
         config.SSID = "\"" + SSID + "\"";
 
         LogUtil.d("wifi:generateOpenNetworkConfig: Security= " + security + " password= " + pwd);
-        if (security == WifiAccessPoint.SECURITY_NONE) {
+        if (security == WifiConstant.SECURITY_NONE) {
             LogUtil.d("wifi:UWifiAccessPoint.SECURITY_NONE");
             config.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.NONE);
-        } else if (security == WifiAccessPoint.SECURITY_WEP) {
+        } else if (security == WifiConstant.SECURITY_WEP) {
             config.hiddenSSID = true;
             //Fix: wep hex or ascii password can't connect
             LogUtil.d("wifi:WEP password length = " + pwd.length());
@@ -380,9 +470,9 @@ public final class WifiHelper {
             config.allowedGroupCiphers.set(WifiConfiguration.GroupCipher.WEP104);
             config.allowedKeyManagement.set(WifiConfiguration.KeyMgmt.NONE);
             config.wepTxKeyIndex = 0;
-        } else if (security == WifiAccessPoint.SECURITY_WPA_PSK
-                || security == WifiAccessPoint.SECURITY_WPA2_PSK
-                || security == WifiAccessPoint.SECURITY_PSK) {
+        } else if (security == WifiConstant.SECURITY_WPA_PSK
+                || security == WifiConstant.SECURITY_WPA2_PSK
+                || security == WifiConstant.SECURITY_PSK) {
             config.preSharedKey = "\"" + pwd + "\"";
             config.hiddenSSID = true;
             config.allowedAuthAlgorithms.set(WifiConfiguration.AuthAlgorithm.OPEN);
@@ -397,7 +487,6 @@ public final class WifiHelper {
     }
 
     private void updateAccessPoints() {
-        boolean notify = false;
         final int wifiState = mWifiManager.getWifiState();
         LogUtil.d("wifi:updateAccessPoints wifiState = " + wifiState);
         switch (wifiState) {
@@ -415,7 +504,7 @@ public final class WifiHelper {
                         LogUtil.d("wifi:connect failed that reason = " + ap.getDisableReason() + " and ssid = " + ap.getSSID());
                         mWifiManager.removeNetwork(ap.getConfig().networkId);
                         mWifiManager.saveConfiguration();//save configure
-                        if (ap.getSecurity() == WifiAccessPoint.SECURITY_WEP &&
+                        if (ap.getSecurity() == WifiConstant.SECURITY_WEP &&
                                 ap.getDisableReason() == -1) {
                             if(callBack != null)
                                 callBack.connectFailed(ExceptionUtil.getExceptionTip(mContext, ExceptionState.WifiError));
@@ -423,17 +512,10 @@ public final class WifiHelper {
                             if(callBack != null)
                                 callBack.connectFailed(ExceptionUtil.getExceptionTip(mContext, ExceptionState.Wifi_Error_PSW));
                         }
-
-                        synchronized (mCallback) {
-                            for (IWifiProxy callback : mCallback) {
-                                callback.onPasswordErrorCallback(ap);
-                            }
-                        }
                     }
                     mWifiAps.add(ap);
                 }
 
-                notify = true;
                 LogUtil.d("wifi:updateAccessPoints ap size:" + mWifiAps.size());
                 //mListViewAdapter.notifyDataSetChanged();
                 break;
@@ -446,44 +528,18 @@ public final class WifiHelper {
             default:
                 break;
         }
-
-        if (notify) {
-            synchronized (mCallback) {
-                for (IWifiProxy callback : mCallback) {
-                    callback.updateAccessPoints(mWifiAps);
-                }
-            }
-        }
     }
 
     private void updateConnectionState(NetworkInfo.DetailedState state, String action) {
-        /* sticky broadcasts can call this when wifi is disabled */
-        if (!mWifiManager.isWifiEnabled()) {
+      /*  if (!mWifiManager.isWifiEnabled()) {
 //            mScanner.pause();
             return;
         }
-
-//        if (state == DetailedState.CONNECTED) {
-//            long endTime = System.currentTimeMillis();
-//        } else if (state == DetailedState.DISCONNECTED) {
-//            long endTime = System.currentTimeMillis();
-//        }
-
-//        if (state == DetailedState.OBTAINING_IPADDR) {
-//            mScanner.pause();
-//        } else {
-//            mScanner.resume();
-//        }
 
         mLastInfo = mWifiManager.getConnectionInfo();
         if (mLastInfo == null)
             return;
-        //for show toast
-        //if (!TextUtils.isEmpty(mLastInfo.getSSID()) && !mLastInfo.getSSID().equals("0x")
-        //        && state == NetworkInfo.DetailedState.CONNECTED) {
-        //    mLastConnectedInfo = mLastInfo;
-        //}
-        //end show toast
+
         if (state != null) {
             mLastState = state;
         }
@@ -491,25 +547,13 @@ public final class WifiHelper {
         LogUtil.d("wifi:updateConnectionState: SSID: " + mLastInfo.getSSID() + "; LastState:" + state);
         for (WifiAccessPoint ap : mWifiAps) {
             ap.update(mLastInfo, mLastState);
-        }
-
-        //mListViewAdapter.notifyDataSetChanged();
-        synchronized (mCallback) {
-            for (IWifiProxy callback : mCallback) {
-                callback.updateAccessPoints(mWifiAps);
-            }
-        }
+        }*/
     }
 
     private void updateWifiState(int state) {
         if (state == WifiManager.WIFI_STATE_DISABLED
                 || state == WifiManager.WIFI_STATE_DISABLING) {
             enable();
-        }
-        synchronized (mCallback) {
-            for (IWifiProxy callback : mCallback) {
-                callback.onWifiStateChanged(state);
-            }
         }
     }
 
@@ -526,7 +570,7 @@ public final class WifiHelper {
         if (configs != null) {
             for (WifiConfiguration config : configs) {
                 WifiAccessPoint accessPoint = new WifiAccessPoint(null, config);
-                accessPoint.update(mLastInfo, mLastState);
+
                 accessPoints.add(accessPoint);
                 apMap.put(accessPoint.getSSID(), accessPoint);
             }
@@ -596,38 +640,4 @@ public final class WifiHelper {
             curVals.add(val);
         }
     }
-
-//  private void showToastOnStateChange(String action,DetailedState state){
-//  if(WifiManager.NETWORK_STATE_CHANGED_ACTION.equals(action)){
-//  if(state == DetailedState.CONNECTED && !mLastInfo.getSSID().equals("0x")){
-//      Spanned m = Html.fromHtml("wifi <font color=#ffba4f>" + mLastInfo.getSSID() + "</font> connected");
-//      Toast.makeText(mContext,m, Toast.LENGTH_SHORT).show();
-//  }
-//  else if(state == DetailedState.DISCONNECTED){
-//      Spanned m = Html.fromHtml("wifi <font color=#ffba4f>" + mLastInfo.getSSID() + "</font> disconnected");
-//      Toast.makeText(mContext,m, Toast.LENGTH_SHORT).show();
-//  }
-//}
-//show toast when connected
-//if(WifiManager.NETWORK_STATE_CHANGED_ACTION.equals(action)
-//&& mLastState == DetailedState.CONNECTED && !mLastInfo.getSSID().equals("0x")){
-//  for(UWifiAccessPoint ap : mWifiAps){
-//      if(ap.getConfigureState() == WifiConfiguration.Status.CURRENT){
-//          Spanned m = Html.fromHtml("wifi <font color=#ffba4f>"
-//              + ap.getSSID() + "</font> " + mContext.getResources().getString(R.string.wifi_connected));
-//          Toast.makeText(mContext,m, Toast.LENGTH_SHORT).show();
-//          //check is captivePortal AP
-//          //isCaptivePortal(ap.getSSID());
-//      }
-//  }
-//}
-    //show toast when disconnected
-//  if(WifiManager.NETWORK_STATE_CHANGED_ACTION.equals(action)){
-//        Spanned m = Html.fromHtml("wifi <font color=#ffba4f>"
-//                 + mLastConnectedInfo.getSSID() + "</font> " + mContext.getResources().getString(R.string.wifi_disconnected));
-//        Toast.makeText(mContext,m, Toast.LENGTH_SHORT).show();
-//   }
-//}
-
-
 }

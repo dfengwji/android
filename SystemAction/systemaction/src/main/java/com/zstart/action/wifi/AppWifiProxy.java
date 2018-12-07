@@ -21,7 +21,7 @@ import java.util.List;
 /**
  * Unity调wifi的接口都放在这里
  */
-public class AppWifiProxy implements IWifiProxy {
+public class AppWifiProxy {
     private static String TAG = "AppWifiProxy";
     private WifiHelper helper;
     private Context mContext;
@@ -30,7 +30,6 @@ public class AppWifiProxy implements IWifiProxy {
     public AppWifiProxy(Context context,ICallBack fun) {
         mContext = context;
         helper = new WifiHelper(mContext, fun);
-        setWifiEventListener(true);
         Pair<String, String> config = readConfig();
         if (config != null) {
             helper.initReceiver();
@@ -43,7 +42,6 @@ public class AppWifiProxy implements IWifiProxy {
     public AppWifiProxy(Context context,ICallBack fun, String ssid,String pwd){
         mContext = context;
         helper = new WifiHelper(mContext, fun);
-        setWifiEventListener(true);
         helper.initReceiver();
         helper.updateWifi(ssid, pwd);
     }
@@ -76,15 +74,6 @@ public class AppWifiProxy implements IWifiProxy {
         String ret = currentWifiStatus;
         currentWifiStatus = null;
         return ret;
-    }
-
-    public void setWifiEventListener(boolean flag) {
-        LogUtil.d("wifi:setWifiEventListener" + String.valueOf(flag));
-        if (flag == true) {
-            helper.registerCallback(this);
-        } else {
-            helper.unregisterCallback(this);
-        }
     }
 
     public void openWifi() {
@@ -124,7 +113,7 @@ public class AppWifiProxy implements IWifiProxy {
     public void connectWifi(String name, String address, String pwd) {
         //mIVRManager.removeAllConfiguration();
         LogUtil.d("wifi:name:" + name + "address:" + address + "pwd:" + pwd);
-        helper.connectNetWork(name, pwd);
+        //helper.connectNetWork(name, pwd);
     }
 
     public void disconnectWifi(int netId) {
@@ -157,12 +146,6 @@ public class AppWifiProxy implements IWifiProxy {
         return object.toString();
     }
 
-    @Override
-    public void onWifiStateChanged(int wifiState) {
-        LogUtil.d("wifi:onWifiStateChanged:" + wifiState);
-    }
-
-    @Override
     public void updateAccessPoints(List<WifiAccessPoint> Aps) {
         // TODO Auto-generated method stub
         // TODO Auto-generated method stub
@@ -230,21 +213,5 @@ public class AppWifiProxy implements IWifiProxy {
         }
     }
 
-    @Override
-    public void onScanFailedCallback() {
-        //TODO:send message to unity scan faild
-        return;
-    }
 
-    @Override
-    public void onPasswordErrorCallback(WifiAccessPoint ap) {
-        //TODO:send message to unity on password error
-        return;
-    }
-
-    @Override
-    public void onNotAccessInternetCallback() {
-        //TODO:send message to unity can't access internet
-        return;
-    }
 }

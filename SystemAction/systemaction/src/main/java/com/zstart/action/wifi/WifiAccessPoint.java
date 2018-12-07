@@ -15,24 +15,13 @@ import java.util.List;
 public class WifiAccessPoint implements Comparable<WifiAccessPoint> {
     private static final String TAG = "_IDS_UWifiAccessPoint";
 
-    enum PskType {
-        UNKNOWN, WPA, WPA2, WPA_WPA2
-    }
 
-    public static final int SECURITY_NONE = 0;
-    public static final int SECURITY_WEP = 1;
-    public static final int SECURITY_PSK = 2;
-    public static final int SECURITY_WPA_PSK = 3;
-    public static final int SECURITY_WPA2_PSK = 4;
-    public static final int SECURITY_EAP = 5;
-    public static final int SECURITY_WAPI_PSK = 6;
-    public static final int SECURITY_WAPI_CERT = 7;
 
     private int mRssi;
     private int mLevel;
     private int mSecurity;
     private Context mContext;
-    private PskType mPskType = PskType.UNKNOWN;
+    private WifiConstant.PskType mPskType = WifiConstant.PskType.UNKNOWN;
     private String mSSID;
     private String mBSSID;
     private int mNetworkId;
@@ -115,11 +104,11 @@ public class WifiAccessPoint implements Comparable<WifiAccessPoint> {
 
     static int getSecurity(WifiConfiguration config) {
         if (config.allowedKeyManagement.get(KeyMgmt.WPA_PSK)) {
-            return SECURITY_PSK;
+            return WifiConstant.SECURITY_PSK;
         }
         if (config.allowedKeyManagement.get(KeyMgmt.WPA_EAP) ||
                 config.allowedKeyManagement.get(KeyMgmt.IEEE8021X)) {
-            return SECURITY_EAP;
+            return WifiConstant.SECURITY_EAP;
         }
         /// M: support wapi psk/cert @{
         /*tingkui
@@ -133,28 +122,12 @@ public class WifiAccessPoint implements Comparable<WifiAccessPoint> {
 
         if (config.wepTxKeyIndex >= 0 && config.wepTxKeyIndex < config.wepKeys.length
                 && config.wepKeys[config.wepTxKeyIndex] != null) {
-            return SECURITY_WEP;
+            return WifiConstant.SECURITY_WEP;
         }
         ///@}
-        return (config.wepKeys[0] != null) ? SECURITY_WEP : SECURITY_NONE;
+        return (config.wepKeys[0] != null) ? WifiConstant.SECURITY_WEP : WifiConstant.SECURITY_NONE;
     }
 
-    public static int getSecurity(ScanResult result) {
-        if (result.capabilities.contains("WAPI-PSK")) {
-            /// M:  WAPI_PSK
-            return SECURITY_WAPI_PSK;
-        } else if (result.capabilities.contains("WAPI-CERT")) {
-            /// M: WAPI_CERT
-            return SECURITY_WAPI_CERT;
-        } else if (result.capabilities.contains("WEP")) {
-            return SECURITY_WEP;
-        } else if (result.capabilities.contains("PSK")) {
-            return SECURITY_PSK;
-        } else if (result.capabilities.contains("EAP")) {
-            return SECURITY_EAP;
-        }
-        return SECURITY_NONE;
-    }
 
     /*
     public String getSecurityString(boolean concise) {
@@ -194,19 +167,7 @@ public class WifiAccessPoint implements Comparable<WifiAccessPoint> {
         }
     }*/
 
-    private static PskType getPskType(ScanResult result) {
-        boolean wpa = result.capabilities.contains("WPA-PSK");
-        boolean wpa2 = result.capabilities.contains("WPA2-PSK");
-        if (wpa2 && wpa) {
-            return PskType.WPA_WPA2;
-        } else if (wpa2) {
-            return PskType.WPA2;
-        } else if (wpa) {
-            return PskType.WPA;
-        } else {
-            return PskType.UNKNOWN;
-        }
-    }
+
 
 
     private void loadConfig(WifiConfiguration config) {
@@ -222,10 +183,10 @@ public class WifiAccessPoint implements Comparable<WifiAccessPoint> {
     private void loadResult(ScanResult result) {
         mSSID = result.SSID;
         mBSSID = result.BSSID;
-        mSecurity = getSecurity(result);
-        mWpsAvailable = mSecurity != SECURITY_EAP && result.capabilities.contains("WPS");
-        if (mSecurity == SECURITY_PSK)
-            mPskType = getPskType(result);
+        mSecurity = WifiConstant.getSecurity(result);
+        mWpsAvailable = mSecurity != WifiConstant.SECURITY_EAP && result.capabilities.contains("WPS");
+        if (mSecurity == WifiConstant.SECURITY_PSK)
+            mPskType = WifiConstant.getPskType(result);
         mNetworkId = -1;
         mRssi = result.level;
         mScanResult = result;
@@ -283,7 +244,7 @@ public class WifiAccessPoint implements Comparable<WifiAccessPoint> {
 
     public boolean update(ScanResult result) {
 
-        if (mSSID.equals(result.SSID) && mSecurity == getSecurity(result)) {
+        if (mSSID.equals(result.SSID) && mSecurity == WifiConstant.getSecurity(result)) {
             if (WifiManager.compareSignalLevel(result.level, mRssi) > 0) {
                 int oldLevel = getLevel();
                 mRssi = result.level;
@@ -293,8 +254,8 @@ public class WifiAccessPoint implements Comparable<WifiAccessPoint> {
                 mBSSID = result.BSSID;
             }
             // This flag only comes from scans, is not easily saved in config
-            if (mSecurity == SECURITY_PSK) {
-                mPskType = getPskType(result);
+            if (mSecurity == WifiConstant.SECURITY_PSK) {
+                mPskType = WifiConstant.getPskType(result);
             }
             return true;
         }
@@ -340,7 +301,7 @@ public class WifiAccessPoint implements Comparable<WifiAccessPoint> {
     }
 
     public void generateOpenNetworkConfig() {
-        if (mSecurity != SECURITY_NONE)
+        if (mSecurity != WifiConstant.SECURITY_NONE)
             throw new IllegalStateException();
         if (mConfig != null)
             return;
