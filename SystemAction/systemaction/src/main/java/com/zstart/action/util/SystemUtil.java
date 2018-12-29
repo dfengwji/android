@@ -382,8 +382,12 @@ public final class SystemUtil {
     }
 
     public static void reboot(Context context){
-        PowerManager powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
-        powerManager.reboot(null);
+        try{
+            PowerManager powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+            powerManager.reboot(null);
+        }catch (Exception e){
+            e.printStackTrace();
+        }
     }
     
     /*

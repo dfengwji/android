@@ -47,7 +47,7 @@ public final class WifiHelper {
 
     //已连接过的wifi列表
     private List<WifiConfiguration> wifiConfigurationList;
-
+    private boolean isConnected = false;
     private  Handler wifiHandler;
 
     public WifiHelper(Context context,ICallBack fun) {
@@ -89,6 +89,7 @@ public final class WifiHelper {
                 } else if (ConnectivityManager.CONNECTIVITY_ACTION.equals(action)) {
                     boolean connected = NetworkUtil.isWifiConnected(context);
                     LogUtil.i("wifi:connectivity action that is connected = "+connected);
+                    isConnected = connected;
                     if (!connected) {
                         removeAllConfiguration();
                         mWifiAps.clear();
@@ -112,6 +113,10 @@ public final class WifiHelper {
                     startScanning();
             }
         };
+    }
+
+    public boolean isConnected() {
+        return isConnected;
     }
 
     public void updateWifi(String ssid, String password) {
@@ -139,7 +144,8 @@ public final class WifiHelper {
     private void checkConnectTarget() {
         if (TextUtils.isEmpty(defaultSSID) || isScanning)
             return;
-        if (checkConnected(defaultSSID))
+        isConnected = checkConnected(defaultSSID);
+        if (isConnected)
             return;
         WifiAccessPoint point = getAccessPoint(defaultSSID);
         if (point == null) {

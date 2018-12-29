@@ -25,7 +25,6 @@ public class AppWifiProxy {
     private static String TAG = "AppWifiProxy";
     private WifiHelper helper;
     private Context mContext;
-    public static String currentWifiStatus = null;
 
     public AppWifiProxy(Context context,ICallBack fun) {
         mContext = context;
@@ -70,10 +69,8 @@ public class AppWifiProxy {
         return helper.getState();
     }
 
-    public String getCurrentWifiStatus() {
-        String ret = currentWifiStatus;
-        currentWifiStatus = null;
-        return ret;
+    public boolean isConnectd(){
+        return helper.isConnected();
     }
 
     public void openWifi() {
