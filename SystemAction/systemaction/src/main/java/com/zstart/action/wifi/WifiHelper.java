@@ -376,7 +376,7 @@ public final class WifiHelper {
         List<WifiConfiguration> configList = mWifiManager.getConfiguredNetworks();
         if(configList != null) {
             for (WifiConfiguration conf : configList) {
-                if ((conf.SSID).equals(convertToQuotedString(name))) {
+                if (!TextUtils.isEmpty(conf.SSID) && (conf.SSID).equals(convertToQuotedString(name))) {
                     if (psw != null && !conf.preSharedKey.equals(psw)) {
                         conf.preSharedKey = psw;
                         LogUtil.d("wifi:reset password = " + psw);
