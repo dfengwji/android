@@ -10,15 +10,12 @@ import android.content.IntentFilter;
 import android.net.wifi.WifiManager;
 import android.os.BatteryManager;
 import android.os.Build;
-import android.os.RemoteException;
 import android.util.Log;
 
-import com.idealsee.controller.Constant;
-import com.idealsee.controller.ControllerDevice;
-import com.idealsee.vrapp.util.LogUtil;
-import com.idealsee.vrapp.util.NetworkUtil;
-import com.idealsee.vrapp.util.SystemUtil;
 import com.unity3d.player.UnityPlayer;
+import com.zstart.action.util.LogUtil;
+import com.zstart.action.util.NetworkUtil;
+import com.zstart.action.util.SystemUtil;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
@@ -40,7 +37,6 @@ public class DeviceProxy {
     public final static int WIFI_STATE_CLOSE = 1;
     public final static int WIFI_STATE_DISCONNECT = 2;
 
-    private ControllerDevice joystick = null;
     private DeviceStateInfo stateInfo;
     private DeviceBaseInfo baseInfo;
     private StorageHelper storageHelper;
@@ -212,7 +208,7 @@ public class DeviceProxy {
         baseInfo.macAddress = getMacAddress();
         baseInfo.bluetoothAddress = getBluetoothAddress();
         baseInfo.androidVersion = Build.VERSION.RELEASE;
-        baseInfo.osVersion = SystemUtil.getOSVersion();
+        baseInfo.osVersion = SystemUtil.getROMVersion();
         baseInfo.module = SystemUtil.getSystemProperty("persist.sys.product.model","");
     }
 
@@ -417,22 +413,7 @@ public class DeviceProxy {
     }
 
     public int getJoystickBattery() {
-        try {
-            if (joystick == null) {
-                joystick = new ControllerDevice(context);
-                if (!joystick.isControllerOn()) {
-                    joystick.setControllerOn(true);
-                }
-            }
-            int state = joystick.getState();
-            if (state == Constant.STATE_CONNECTED || state == Constant.STATE_CONNECTING) {
-                return joystick.getBatteryLevel();
-            }
-            return -1;
-        } catch (RemoteException e) {
-            e.printStackTrace();
-            return -1;
-        }
+        return -1;
     }
 
     public boolean isVRCharging(Intent intent) {

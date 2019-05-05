@@ -8,13 +8,9 @@ import android.os.storage.StorageManager;
 import android.text.TextUtils;
 import android.util.Pair;
 
-import com.idealsee.vrapp.util.LogUtil;
+import com.zstart.action.util.LogUtil;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.List;
 
@@ -124,7 +120,7 @@ final class StorageHelper {
     }
 
     private String getTFPath(){
-        try {
+        /*try {
             Class<?> environment = Class.forName("android.os.Environment");
             Method method = environment.getMethod("getExternalStorageSdDirectory");
             Object o = method.invoke(null);
@@ -135,19 +131,19 @@ final class StorageHelper {
             return "";
         } catch (Exception e) {
             e.printStackTrace();
-        }
+        }*/
         return "";
     }
 
     private String getTFState(){
-        try {
+        /*try {
             Class<?> environment = Class.forName("android.os.Environment");
             Method method = environment.getMethod("getExternalStorageStateSd");
             Object o = method.invoke(null);
             return  (String)o;
         } catch (Exception e) {
             e.printStackTrace();
-        }
+        }*/
         return "";
     }
 
@@ -179,7 +175,7 @@ final class StorageHelper {
         }catch (Exception e){
             e.printStackTrace();
         }
-        return "";*/
+        return "";
         try {
             Class<?> environment = Class.forName("android.os.Environment");
             Method method = environment.getMethod("getExternalStorageUsbDirectory");
@@ -191,7 +187,7 @@ final class StorageHelper {
             return "";
         } catch (Exception e) {
             e.printStackTrace();
-        }
+        }*/
         return "";
     }
 }
