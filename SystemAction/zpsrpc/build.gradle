@@ -1,0 +1,117 @@
+apply plugin: 'com.android.library'
+apply plugin: 'com.google.protobuf'
+
+buildscript {
+    repositories {
+        google()
+        jcenter()
+        mavenLocal()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:3.4.0'
+        classpath 'com.google.protobuf:protobuf-gradle-plugin:0.8.5'
+    }
+}
+
+android{
+    sourceSets {
+        main {
+            // 定义proto文件目录
+            proto {
+                srcDir 'src/main/proto'
+                include '**/*.proto'
+            }
+            java {
+                srcDir 'src/main/java'
+            }
+        }
+    }
+}
+
+android {
+    compileSdkVersion 27
+    buildToolsVersion '28.0.1'
+    defaultConfig {
+        minSdkVersion 24
+        targetSdkVersion 27
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+}
+
+//编写编译任务，调用plugin编译生成java文件
+protobuf {
+    protoc {
+        artifact = 'com.google.protobuf:protoc:3.5.1'//编译器版本
+        //path = '/usr/local/bin/protoc' //指定本地编译器
+    }
+    plugins {
+       /* // Locate a plugin with name 'grpc'. This step is optional.
+        // If you don't locate it, protoc will try to use "protoc-gen-grpc" from
+        // system search path.
+        grpc {
+            artifact = 'io.grpc:protoc-gen-grpc-java:1.0.0-pre2'
+            // or
+            // path = 'tools/protoc-gen-grpc-java'
+        }*/
+        // Any other plugins
+        javalite {
+            artifact = 'com.google.protobuf:protoc-gen-javalite:3.0.0'//指定当前工程使用的protobuf版本为javalite版，以生成javalite版的java类
+        }
+    }
+    //generateProtoTasks.generatedFilesBaseDir = "$projectDir/src/main" //指定编译生成java类的存放位置
+    generateProtoTasks {
+        all().each { task ->
+            task.builtins {
+                //remove java
+                // This yields
+                // "--java_out=example_option1=true,example_option2:/path/to/output"
+                // on the protoc commandline, which is equivalent to
+                // "--java_out=/path/to/output --java_opt=example_option1=true,example_option2"
+                // with the latest version of protoc.
+                java {
+                    //option 'example_option1=true'
+                    //option 'example_option2'
+                }
+            }
+            task.plugins {
+                // Add grpc output without any option.  grpc must have been defined in the
+                // protobuf.plugins block.
+                // This yields
+                // "--grpc_out=/path/to/output" on the protoc commandline.
+                //grpc {
+                // outputSubDir = 'grpcjava'
+                // }
+                javalite {
+                    //outputSubDir = 'main' //指定存放位置的二级目录
+                }
+            }
+        }
+        //ofSourceSet('main')
+        ofFlavor('demo')
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation "com.google.protobuf:protobuf-lite:3.0.1"
+    implementation ('com.squareup.retrofit2:converter-protobuf:2.2.0') {
+        exclude group: 'com.google.protobuf', module: 'protobuf-java'
+    }
+
+    implementation 'com.android.support:appcompat-v7:27.1.1'
+    testImplementation 'junit:junit:4.12'
+    androidTestImplementation 'com.android.support.test:runner:1.0.2'
+    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
+}
